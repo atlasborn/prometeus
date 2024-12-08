@@ -6,6 +6,7 @@ import zipfile
 import tempfile
 import shutil
 import ffmpeg
+import time
 
 def set_type(playlist: bool):
     if playlist:
@@ -36,9 +37,13 @@ def get_playlist_title(url):
         'extract_flat': True,
         'dump_single_json': True,
     }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
-    return info.get('title', 'Playlist')
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+        return info.get('title', 'Playlist')
+    except Exception as e:
+        st.error(f"Erro ao obter o título da playlist: {str(e)}")
+        return 'Playlist'
 
 def convert_to_mp3(input_file, output_file):
     ffmpeg.input(input_file).output(output_file).run()
@@ -51,44 +56,48 @@ def download_video_audio(playlist_url, codec, is_playlist):
     temp_dir = tempfile.mkdtemp()
     ydl_opts['outtmpl'] = os.path.join(temp_dir, '%(title)s.%(ext)s')
 
-    if is_playlist:
-        playlist_title = get_playlist_title(playlist_url)
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([playlist_url])
-        
-        zip_buffer = BytesIO()
-        with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
-            for root, _, files in os.walk(temp_dir):
-                for file in files:
-                    if file.endswith('.mp3') or file.endswith('.mp4'):
-                        file_path = os.path.join(root, file)
-                        with open(file_path, 'rb') as f:
-                            zip_file.writestr(file, f.read())
-                        os.remove(file_path)  # Remove local file after adding to zip_buffer
-        
-        shutil.rmtree(temp_dir)  # Remove temporary directory and its contents
-        zip_buffer.seek(0)
-        return zip_buffer, f"{playlist_title}.zip"
-    else:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(playlist_url, download=False)
-            file_ext = 'mp3' if codec == 'audio' else 'mp4'
-            file_name = f"{info['title']}.{file_ext}"
-            file_path = os.path.join(temp_dir, file_name)
-            ydl.download([playlist_url])
+    try:
+        if is_playlist:
+            playlist_title = get_playlist_title(playlist_url)
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([playlist_url])
             
-            if codec == 'audio':
-                mp3_file_path = os.path.join(temp_dir, f"{info['title']}.mp3")
-                convert_to_mp3(file_path, mp3_file_path)
-                file_path = mp3_file_path
+            zip_buffer = BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
+                for root, _, files in os.walk(temp_dir):
+                    for file in files:
+                        if file.endswith('.mp3') or file.endswith('.mp4'):
+                            file_path = os.path.join(root, file)
+                            with open(file_path, 'rb') as f:
+                                zip_file.writestr(file, f.read())
+                            os.remove(file_path)  # Remove local file after adding to zip_buffer
             
-            with open(file_path, 'rb') as f:
-                file_data = BytesIO(f.read())
-            os.remove(file_path)  # Remove local file after adding to file_data
+            shutil.rmtree(temp_dir)  # Remove temporary directory and its contents
+            zip_buffer.seek(0)
+            return zip_buffer, f"{playlist_title}.zip"
+        else:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(playlist_url, download=False)
+                file_ext = 'mp3' if codec == 'audio' else 'mp4'
+                file_name = f"{info['title']}.{file_ext}"
+                file_path = os.path.join(temp_dir, file_name)
+                ydl.download([playlist_url])
+                
+                if codec == 'audio':
+                    mp3_file_path = os.path.join(temp_dir, f"{info['title']}.mp3")
+                    convert_to_mp3(file_path, mp3_file_path)
+                    file_path = mp3_file_path
+                
+                with open(file_path, 'rb') as f:
+                    file_data = BytesIO(f.read())
+                os.remove(file_path)  # Remove local file after adding to file_data
 
-        shutil.rmtree(temp_dir)  # Remove temporary directory and its contents
-        file_data.seek(0)
-        return file_data, file_name
+            shutil.rmtree(temp_dir)  # Remove temporary directory and its contents
+            file_data.seek(0)
+            return file_data, file_name
+    except Exception as e:
+        st.error(f"Erro durante o download: {str(e)}")
+        shutil.rmtree(temp_dir)  # Clean up in case of exception
 
 st.title("Prometeus Downloader - Youtube Converter [ MP3 MP4]")
 
@@ -104,6 +113,7 @@ is_playlist = st.checkbox("Playlist")
 if st.button("Baixar"):
     if playlist_url:
         file_buffer, filename = download_video_audio(playlist_url, codec, is_playlist)
-        st.download_button(label="Baixar", data=file_buffer, file_name=filename)
+        if file_buffer:
+            st.download_button(label="Baixar", data=file_buffer, file_name=filename)
     else:
         st.error("Por favor, insira a URL da Playlist do YouTube.")
