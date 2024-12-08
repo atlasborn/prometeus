@@ -13,11 +13,14 @@ def set_type(playlist: bool):
 
 def audio(playlist: bool):
     ydl_opts = {
-        'format': 'bestvideo[ext=mp4][vcodec=h264]+bestaudio/best',
+        'format': 'bestaudio/best',
         'outtmpl': set_type(playlist=playlist),
         'noplaylist': not playlist,
-        'merge_output_format': 'mp4',
-        'postprocessors': [{'key': 'FFmpegVideoConvertor', 'format': 'mp4'}]
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }]
     }
     return ydl_opts
 
@@ -26,8 +29,10 @@ def video(playlist: bool):
         'format': 'bestvideo+bestaudio/best',
         'outtmpl': set_type(playlist=playlist),
         'noplaylist': not playlist,
-        'merge_output_format': 'mp4'
-        }
+        'postprocessors': [{
+            'key': 'FFmpegVideoConvertor',  # No 'format' argument here
+        }]
+    }
     return ydl_opts
 
 def get_playlist_title(url):
