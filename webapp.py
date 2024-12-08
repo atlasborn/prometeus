@@ -6,7 +6,9 @@ import zipfile
 import tempfile
 import shutil
 import ffmpeg
-import time
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 def set_type(playlist: bool):
     if playlist:
@@ -42,11 +44,16 @@ def get_playlist_title(url):
             info = ydl.extract_info(url, download=False)
         return info.get('title', 'Playlist')
     except Exception as e:
+        logging.error(f"Erro ao obter o título da playlist: {str(e)}")
         st.error(f"Erro ao obter o título da playlist: {str(e)}")
         return 'Playlist'
 
 def convert_to_mp3(input_file, output_file):
-    ffmpeg.input(input_file).output(output_file).run()
+    try:
+        ffmpeg.input(input_file).output(output_file).run()
+    except Exception as e:
+        logging.error(f"Erro na conversão para MP3: {str(e)}")
+        st.error(f"Erro na conversão para MP3: {str(e)}")
 
 def download_video_audio(playlist_url, codec, is_playlist):
     download_option = {"audio": audio, "video": video}
@@ -74,6 +81,8 @@ def download_video_audio(playlist_url, codec, is_playlist):
             
             shutil.rmtree(temp_dir)  # Remove temporary directory and its contents
             zip_buffer.seek(0)
+            if zip_buffer.getbuffer().nbytes == 0:
+                st.warning("O arquivo ZIP está vazio. Verifique se os vídeos foram baixados corretamente.")
             return zip_buffer, f"{playlist_title}.zip"
         else:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -96,6 +105,7 @@ def download_video_audio(playlist_url, codec, is_playlist):
             file_data.seek(0)
             return file_data, file_name
     except Exception as e:
+        logging.error(f"Erro durante o download: {str(e)}")
         st.error(f"Erro durante o download: {str(e)}")
         shutil.rmtree(temp_dir)  # Clean up in case of exception
 
