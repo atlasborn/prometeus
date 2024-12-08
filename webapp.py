@@ -16,22 +16,6 @@ def set_type(playlist: bool):
     else:
         return '%(title)s.%(ext)s'
 
-def audio(playlist: bool):
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'outtmpl': set_type(playlist=playlist),
-        'noplaylist': not playlist,
-    }
-    return ydl_opts
-
-def video(playlist: bool):
-    ydl_opts = {
-        'format': 'bestvideo+bestaudio/best',
-        'outtmpl': set_type(playlist=playlist),
-        'noplaylist': not playlist,
-    }
-    return ydl_opts
-
 def get_playlist_title(url):
     ydl_opts = {
         'quiet': True,
@@ -40,9 +24,8 @@ def get_playlist_title(url):
         'dump_single_json': True,
     }
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-        return info.get('title', 'Playlist')
+        playlist = pafy.get_playlist(url)
+        return playlist['title']
     except Exception as e:
         logging.error(f"Erro ao obter o título da playlist: {str(e)}")
         st.error(f"Erro ao obter o título da playlist: {str(e)}")
@@ -56,57 +39,59 @@ def convert_to_mp3(input_file, output_file):
         st.error(f"Erro na conversão para MP3: {str(e)}")
 
 def download_video_audio(playlist_url, codec, is_playlist):
-    download_option = {"audio": audio, "video": video}
-    
-    playlist_title = "Downloads"
-    ydl_opts = download_option.get(codec, audio)(playlist=is_playlist)
     temp_dir = tempfile.mkdtemp()
-    ydl_opts['outtmpl'] = os.path.join(temp_dir, '%(title)s.%(ext)s')
 
     try:
         if is_playlist:
-            playlist_title = get_playlist_title(playlist_url)
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([playlist_url])
+            playlist = pafy.get_playlist(playlist_url)
+            playlist_title = playlist['title']
             
             zip_buffer = BytesIO()
             with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
-                for root, _, files in os.walk(temp_dir):
-                    for file in files:
-                        if file.endswith('.mp3') or file.endswith('.mp4'):
-                            file_path = os.path.join(root, file)
-                            with open(file_path, 'rb') as f:
-                                zip_file.writestr(file, f.read())
-                            os.remove(file_path)  # Remove local file after adding to zip_buffer
-            
-            shutil.rmtree(temp_dir)  # Remove temporary directory and its contents
+                for item in playlist['items']:
+                    p = item['pafy']
+                    bestaudio = p.getbestaudio()
+                    file_name = f"{p.title}.{bestaudio.extension}"
+                    file_path = os.path.join(temp_dir, file_name)
+                    bestaudio.download(filepath=file_path)
+                    
+                    if codec == 'audio':
+                        mp3_file_path = os.path.join(temp_dir, f"{p.title}.mp3")
+                        convert_to_mp3(file_path, mp3_file_path)
+                        file_path = mp3_file_path
+
+                    with open(file_path, 'rb') as f:
+                        zip_file.writestr(file_name, f.read())
+                    os.remove(file_path)
+
+            shutil.rmtree(temp_dir)
             zip_buffer.seek(0)
             if zip_buffer.getbuffer().nbytes == 0:
                 st.warning("O arquivo ZIP está vazio. Verifique se os vídeos foram baixados corretamente.")
             return zip_buffer, f"{playlist_title}.zip"
         else:
-            with pafy.new(playlist_url) as paf:
-                bestaudio = paf.getbestaudio()
-                file_name = f"{bestaudio.title}.{bestaudio.ext}"
-                file_path = os.path.join(temp_dir, file_name)
-                bestaudio.download(filepath=file_path)
-                
-                if codec == 'audio':
-                    mp3_file_path = os.path.join(temp_dir, f"{bestaudio.title}.mp3")
-                    convert_to_mp3(file_path, mp3_file_path)
-                    file_path = mp3_file_path
-                
-                with open(file_path, 'rb') as f:
-                    file_data = BytesIO(f.read())
-                os.remove(file_path)  # Remove local file after adding to file_data
+            p = pafy.new(playlist_url)
+            bestaudio = p.getbestaudio()
+            file_name = f"{p.title}.{bestaudio.extension}"
+            file_path = os.path.join(temp_dir, file_name)
+            bestaudio.download(filepath=file_path)
+            
+            if codec == 'audio':
+                mp3_file_path = os.path.join(temp_dir, f"{p.title}.mp3")
+                convert_to_mp3(file_path, mp3_file_path)
+                file_path = mp3_file_path
+            
+            with open(file_path, 'rb') as f:
+                file_data = BytesIO(f.read())
+            os.remove(file_path)
 
-            shutil.rmtree(temp_dir)  # Remove temporary directory and its contents
+            shutil.rmtree(temp_dir)
             file_data.seek(0)
             return file_data, file_name
     except Exception as e:
         logging.error(f"Erro durante o download: {str(e)}")
         st.error(f"Erro durante o download: {str(e)}")
-        shutil.rmtree(temp_dir)  # Clean up in case of exception
+        shutil.rmtree(temp_dir)
 
 st.title("Prometeus Downloader - Youtube Converter [ MP3 MP4]")
 
