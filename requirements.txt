@@ -1,4 +1,2 @@
 streamlit
-pafy
-ffmpeg-python
-youtube-dl
+pytube
