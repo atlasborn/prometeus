@@ -1,5 +1,3 @@
-pandas
-numpy
-ffmpeg
-yt-dlp
 streamlit
+yt-dlp
+ffmpeg-python
