@@ -4,6 +4,7 @@ import os
 from io import BytesIO
 import zipfile
 import tempfile
+import shutil
 import ffmpeg
 
 def set_type(playlist: bool):
@@ -65,7 +66,7 @@ def download_video_audio(playlist_url, codec, is_playlist):
                             zip_file.writestr(file, f.read())
                         os.remove(file_path)  # Remove local file after adding to zip_buffer
         
-        os.rmdir(temp_dir)  # Remove temporary directory
+        shutil.rmtree(temp_dir)  # Remove temporary directory and its contents
         zip_buffer.seek(0)
         return zip_buffer, f"{playlist_title}.zip"
     else:
@@ -85,7 +86,7 @@ def download_video_audio(playlist_url, codec, is_playlist):
                 file_data = BytesIO(f.read())
             os.remove(file_path)  # Remove local file after adding to file_data
 
-        os.rmdir(temp_dir)  # Remove temporary directory
+        shutil.rmtree(temp_dir)  # Remove temporary directory and its contents
         file_data.seek(0)
         return file_data, file_name
 
