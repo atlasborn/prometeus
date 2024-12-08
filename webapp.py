@@ -1,5 +1,5 @@
 import streamlit as st
-import yt_dlp
+import pafy
 import os
 from io import BytesIO
 import zipfile
@@ -85,15 +85,14 @@ def download_video_audio(playlist_url, codec, is_playlist):
                 st.warning("O arquivo ZIP está vazio. Verifique se os vídeos foram baixados corretamente.")
             return zip_buffer, f"{playlist_title}.zip"
         else:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(playlist_url, download=False)
-                file_ext = 'mp3' if codec == 'audio' else 'mp4'
-                file_name = f"{info['title']}.{file_ext}"
+            with pafy.new(playlist_url) as paf:
+                bestaudio = paf.getbestaudio()
+                file_name = f"{bestaudio.title}.{bestaudio.ext}"
                 file_path = os.path.join(temp_dir, file_name)
-                ydl.download([playlist_url])
+                bestaudio.download(filepath=file_path)
                 
                 if codec == 'audio':
-                    mp3_file_path = os.path.join(temp_dir, f"{info['title']}.mp3")
+                    mp3_file_path = os.path.join(temp_dir, f"{bestaudio.title}.mp3")
                     convert_to_mp3(file_path, mp3_file_path)
                     file_path = mp3_file_path
                 
