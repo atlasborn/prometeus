@@ -17,12 +17,6 @@ def set_type(playlist: bool):
         return '%(title)s.%(ext)s'
 
 def get_playlist_title(url):
-    ydl_opts = {
-        'quiet': True,
-        'simulate': True,
-        'extract_flat': True,
-        'dump_single_json': True,
-    }
     try:
         playlist = pafy.get_playlist(url)
         return playlist['title']
