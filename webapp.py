@@ -4,6 +4,7 @@ import os
 from io import BytesIO
 import zipfile
 import tempfile
+import ffmpeg
 
 def set_type(playlist: bool):
     if playlist:
@@ -16,11 +17,6 @@ def audio(playlist: bool):
         'format': 'bestaudio/best',
         'outtmpl': set_type(playlist=playlist),
         'noplaylist': not playlist,
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }]
     }
     return ydl_opts
 
@@ -29,9 +25,6 @@ def video(playlist: bool):
         'format': 'bestvideo+bestaudio/best',
         'outtmpl': set_type(playlist=playlist),
         'noplaylist': not playlist,
-        'postprocessors': [{
-            'key': 'FFmpegVideoConvertor',  # No 'format' argument here
-        }]
     }
     return ydl_opts
 
@@ -45,6 +38,9 @@ def get_playlist_title(url):
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
     return info.get('title', 'Playlist')
+
+def convert_to_mp3(input_file, output_file):
+    ffmpeg.input(input_file).output(output_file).run()
 
 def download_video_audio(playlist_url, codec, is_playlist):
     download_option = {"audio": audio, "video": video}
@@ -79,6 +75,12 @@ def download_video_audio(playlist_url, codec, is_playlist):
             file_name = f"{info['title']}.{file_ext}"
             file_path = os.path.join(temp_dir, file_name)
             ydl.download([playlist_url])
+            
+            if codec == 'audio':
+                mp3_file_path = os.path.join(temp_dir, f"{info['title']}.mp3")
+                convert_to_mp3(file_path, mp3_file_path)
+                file_path = mp3_file_path
+            
             with open(file_path, 'rb') as f:
                 file_data = BytesIO(f.read())
             os.remove(file_path)  # Remove local file after adding to file_data
