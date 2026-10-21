@@ -20,6 +20,11 @@ from server import youtube_url
 
 app = FastAPI()
 FFMPEG = imageio_ffmpeg.get_ffmpeg_exe()
+NODE = shutil.which('node')
+if not NODE:
+    import nodejs_wheel
+    node_root = Path(nodejs_wheel.__file__).parent
+    NODE = str(node_root / ('node.exe' if os.name == 'nt' else 'bin/node'))
 
 
 class Link(BaseModel):
@@ -43,12 +48,12 @@ def process_environment():
 
 
 def command():
-    return [sys.executable, '-m', 'yt_dlp', '--ignore-config', '--js-runtimes', 'node', '--socket-timeout', '20', '--retries', '1']
+    return [sys.executable, '-m', 'yt_dlp', '--ignore-config', '--js-runtimes', 'node:' + NODE, '--socket-timeout', '20', '--retries', '1']
 
 
 @app.get('/api/health')
 def health():
-    return {'ffmpeg': Path(FFMPEG).is_file(), 'ytdlp': True, 'mode': 'serverless', 'maxDuration': 45, 'node': bool(shutil.which('node'))}
+    return {'ffmpeg': Path(FFMPEG).is_file(), 'ytdlp': True, 'mode': 'serverless', 'maxDuration': 45, 'node': bool(NODE and Path(NODE).is_file())}
 
 
 @app.get('/api/jobs')
@@ -68,6 +73,8 @@ async def inspect(data: Link):
         raise HTTPException(504, 'O YouTube demorou para responder. Tente novamente.')
     if process.returncode:
         logging.warning('YouTube inspection failed: %s', error_output.decode(errors='replace')[-1400:])
+        if b'Sign in to confirm' in error_output:
+            raise HTTPException(422, 'O YouTube está bloqueando requisições deste servidor e exige verificação. Tente novamente mais tarde ou use a versão local.')
         raise HTTPException(422, 'O YouTube não disponibilizou este conteúdo ao servidor. Verifique o link ou tente novamente mais tarde.')
     info = json.loads(output)
     entries = info.get('entries') or [info]
