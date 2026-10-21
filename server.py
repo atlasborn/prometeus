@@ -1,11 +1,11 @@
-import json, os, re, subprocess, sys, threading, uuid, zipfile
+import json, os, re, subprocess, sys, threading, uuid, zipfile, tempfile
 from pathlib import Path
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
 
 ROOT = Path(__file__).resolve().parent
-DOWNLOADS = ROOT / 'downloads'
+DOWNLOADS = Path(tempfile.gettempdir()) / 'prometeus' if os.environ.get('VERCEL') else ROOT / 'downloads'
 DOWNLOADS.mkdir(exist_ok=True)
 JOBS = {}
 LOCK = threading.Lock()

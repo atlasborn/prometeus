@@ -5,7 +5,7 @@ const message = text => { $('#notice').textContent = text; };
 async function api(path, data) {
   const response = await fetch(path, data ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)} : {});
   const body = await response.json();
-  if (!response.ok) throw new Error(body.error || 'Não foi possível acessar o servidor.');
+  if (!response.ok) throw new Error(body.error || (typeof body.detail === 'string' ? body.detail : '') || 'Não foi possível acessar o servidor.');
   return body;
 }
 function view(name) {
@@ -42,13 +42,13 @@ $('#select-all').onclick = () => {const available = info.items.filter(item=>item
 $('#convert').onclick = async () => {
   if (!info || !selected.size || submitting) return;
   submitting = true; updateSelection();
-  try {await api('/api/jobs',{url:analyzedUrl,title:info.title,format,quality:$('#quality').value,items:[...selected].sort((a,b)=>a-b)}); view('downloads');}
+  try {await runtimeReady; const data={url:analyzedUrl,title:info.title,format,quality:$('#quality').value,items:[...selected].sort((a,b)=>a-b)}; if(cloudMode) await queueCloud(data,info.items.filter(item=>selected.has(item.index))); else await api('/api/jobs',data); view('downloads');}
   catch(error){message(error.message);} finally {submitting=false;updateSelection();}
 };
 async function loadJobs(){
   try {
-    const jobs = await api('/api/jobs'); $('#count').textContent = jobs.length;
-    $('#jobs').innerHTML = jobs.length ? jobs.slice().reverse().map(job=>`<article class="job"><div class="job-head"><h3>${escapeHtml(job.title)}</h3><span class="tag">${escapeHtml(job.format.toUpperCase())}</span></div><p>${{queued:'Na fila',processing:'Convertendo',completed:'Pronto para baixar',error:'Falha na conversão'}[job.status]} · ${job.count} ${job.count === 1 ? 'item' : 'itens'}${job.status === 'processing' ? ' · arquivo atual: '+Math.round(job.progress)+'%' : ''}</p>${job.status==='processing' ? `<progress max="100" value="${job.progress}"></progress>` : ''}${job.status === 'completed' ? `<a class="primary" href="/api/download/${job.id}">↓ Baixar ${job.count > 1 ? 'ZIP' : job.format.toUpperCase()}</a>` : ''}${job.error ? `<p role="alert">${escapeHtml(job.error)}</p>` : ''}</article>`).join('') : '<div class="empty"><strong>O próximo play começa aqui.</strong>Suas conversões aparecerão nesta área.<br><br><button class="primary" id="start-conversion">＋ Nova conversão</button></div>';
+    await runtimeReady; const jobs = cloudMode ? cloudJobs : await api('/api/jobs'); $('#count').textContent = jobs.length;
+    $('#jobs').innerHTML = jobs.length ? jobs.slice().reverse().map(job=>`<article class="job"><div class="job-head"><h3>${escapeHtml(job.title)}</h3><span class="tag">${escapeHtml(job.format.toUpperCase())}</span></div><p>${{queued:'Na fila',processing:'Convertendo',completed:'Pronto para baixar',error:'Falha na conversão'}[job.status]} · ${job.count} ${job.count === 1 ? 'item' : 'itens'}${job.status === 'processing' ? (job.current ? ' · item '+job.current+'/'+job.count : '')+' · arquivo atual: '+Math.round(job.progress)+'%' : ''}</p>${job.status==='processing' ? `<progress max="100" value="${job.progress}"></progress>` : ''}${job.status === 'completed' ? `<a class="primary" href="${job.downloadUrl || '/api/download/'+job.id}" download="${escapeHtml(job.filename || 'Prometeus')}">↓ Baixar ${job.count > 1 ? 'ZIP' : job.format.toUpperCase()}</a>` : ''}${job.error ? `<p role="alert">${escapeHtml(job.error)}</p>` : ''}</article>`).join('') : '<div class="empty"><strong>O próximo play começa aqui.</strong>Suas conversões aparecerão nesta área.<br><br><button class="primary" id="start-conversion">＋ Nova conversão</button></div>';
     if($('#start-conversion')) $('#start-conversion').onclick=()=>view('converter');
   } catch {$('#jobs').innerHTML='<div class="empty">Não foi possível conectar ao servidor. Verifique se ele está em execução.</div>';}
 }
