@@ -2,6 +2,7 @@
 import asyncio
 import base64
 import json
+import logging
 import os
 import re
 import shutil
@@ -37,13 +38,17 @@ def validate_url(url):
         raise HTTPException(400, str(error)) from error
 
 
+def process_environment():
+    return {**os.environ, 'PYTHONPATH': os.pathsep.join(str(path) for path in sys.path)}
+
+
 def command():
     return [sys.executable, '-m', 'yt_dlp', '--ignore-config', '--js-runtimes', 'node', '--socket-timeout', '20', '--retries', '1']
 
 
 @app.get('/api/health')
 def health():
-    return {'ffmpeg': Path(FFMPEG).is_file(), 'ytdlp': True, 'mode': 'serverless', 'maxDuration': 45}
+    return {'ffmpeg': Path(FFMPEG).is_file(), 'ytdlp': True, 'mode': 'serverless', 'maxDuration': 45, 'node': bool(shutil.which('node'))}
 
 
 @app.get('/api/jobs')
@@ -54,14 +59,15 @@ def jobs():
 @app.post('/api/inspect')
 async def inspect(data: Link):
     url = validate_url(data.url)
-    process = await asyncio.create_subprocess_exec(*command(), '--flat-playlist', '--dump-single-json', '--skip-download', '--playlist-end', '500', '--', url, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+    process = await asyncio.create_subprocess_exec(*command(), '--flat-playlist', '--dump-single-json', '--skip-download', '--playlist-end', '500', '--', url, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, env=process_environment())
     try:
-        output, _ = await asyncio.wait_for(process.communicate(), timeout=45)
+        output, error_output = await asyncio.wait_for(process.communicate(), timeout=45)
     except (TimeoutError, asyncio.CancelledError):
         process.kill()
         await process.wait()
         raise HTTPException(504, 'O YouTube demorou para responder. Tente novamente.')
     if process.returncode:
+        logging.warning('YouTube inspection failed: %s', error_output.decode(errors='replace')[-1400:])
         raise HTTPException(422, 'O YouTube não disponibilizou este conteúdo ao servidor. Verifique o link ou tente novamente mais tarde.')
     info = json.loads(output)
     entries = info.get('entries') or [info]
@@ -93,7 +99,7 @@ async def conversion_stream(data):
                 args += ['-f', f'bv*[height<={data.quality}][ext=mp4]+ba[ext=m4a]/b[height<={data.quality}][ext=mp4]', '--merge-output-format', 'mp4']
             args += ['--', data.url]
             yield event('progress', value=0)
-            process = await asyncio.create_subprocess_exec(*args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+            process = await asyncio.create_subprocess_exec(*args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT, env=process_environment())
             started = time.monotonic()
             while True:
                 if time.monotonic() - started > 45:
