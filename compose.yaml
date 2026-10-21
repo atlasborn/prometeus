@@ -1,0 +1,10 @@
+services:
+  prometeus:
+    build: .
+    ports:
+      - "127.0.0.1:7189:7189"
+    volumes:
+      - downloads:/app/downloads
+    restart: unless-stopped
+volumes:
+  downloads:
