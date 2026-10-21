@@ -121,6 +121,6 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_json({'error': 'O servidor não conseguiu processar o pedido. Verifique a instalação do yt-dlp.'}, 500)
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', '8000'))
+    port = int(os.environ.get('PORT', '7189'))
     print(f'Prometeus disponível em http://localhost:{port}', flush=True)
     ThreadingHTTPServer((os.environ.get('HOST', '127.0.0.1'), port), Handler).serve_forever()

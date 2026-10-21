@@ -10,5 +10,5 @@ COPY public ./public
 RUN useradd --create-home prometeus && mkdir downloads && chown prometeus:prometeus downloads
 USER prometeus
 ENV HOST=0.0.0.0
-EXPOSE 8000
+EXPOSE 7189
 CMD ["python", "server.py"]

@@ -14,7 +14,7 @@ Web app de conversão de vídeos e playlists públicas do YouTube, com tema game
 docker compose up --build -d
 ```
 
-Abra http://localhost:8000. A imagem instala Python, yt-dlp, Node e FFmpeg. O volume `downloads` mantém os arquivos. A porta é publicada apenas no dispositivo local.
+Abra http://localhost:7189. A imagem instala Python, yt-dlp, Node e FFmpeg. O volume `downloads` mantém os arquivos. A porta é publicada apenas no dispositivo local.
 
 ## Executar com Python
 
