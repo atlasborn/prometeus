@@ -43,7 +43,7 @@ def command():
 
 @app.get('/api/health')
 def health():
-    return {'ffmpeg': Path(FFMPEG).is_file(), 'ytdlp': True, 'mode': 'serverless', 'maxDuration': 260}
+    return {'ffmpeg': Path(FFMPEG).is_file(), 'ytdlp': True, 'mode': 'serverless', 'maxDuration': 45}
 
 
 @app.get('/api/jobs')
@@ -56,7 +56,7 @@ async def inspect(data: Link):
     url = validate_url(data.url)
     process = await asyncio.create_subprocess_exec(*command(), '--flat-playlist', '--dump-single-json', '--skip-download', '--playlist-end', '500', '--', url, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
     try:
-        output, _ = await asyncio.wait_for(process.communicate(), timeout=90)
+        output, _ = await asyncio.wait_for(process.communicate(), timeout=45)
     except (TimeoutError, asyncio.CancelledError):
         process.kill()
         await process.wait()
@@ -96,7 +96,7 @@ async def conversion_stream(data):
             process = await asyncio.create_subprocess_exec(*args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
             started = time.monotonic()
             while True:
-                if time.monotonic() - started > 260:
+                if time.monotonic() - started > 45:
                     process.kill()
                     await process.wait()
                     yield event('error', message='Este vídeo excedeu o tempo de conversão online. Tente uma qualidade menor ou use a versão local.')
