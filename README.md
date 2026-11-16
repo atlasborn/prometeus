@@ -6,7 +6,8 @@ Web app de conversão de vídeos e playlists públicas do YouTube, com tema game
 - MP4 em até 360p, 720p ou 1080p, conforme a fonte disponível.
 - Seleção individual ou de todos os itens de uma playlist.
 - Fila com dois processos simultâneos e progresso do arquivo atual.
-- Downloads individuais ou ZIP para múltiplos itens.
+- Downloads individuais sem o identificador do YouTube no nome do arquivo.
+- ZIP de playlists com os itens organizados em uma pasta, na ordem original e com o número da posição ao fim do nome.
 
 ## Executar com Docker
 

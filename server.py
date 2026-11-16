@@ -17,13 +17,42 @@ def youtube_url(value):
         raise ValueError('Insira um link HTTPS válido do YouTube.')
     return value
 
+def safe_name(value, fallback='Playlist'):
+    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', str(value or ''))
+    name = re.sub(r'\s+', ' ', name).strip(' .')
+    return (name[:100].rstrip(' .') or fallback)
+
+def normalize_download_names(files, is_playlist):
+    renamed = []
+    for file in files:
+        if is_playlist:
+            match = re.match(r'^(\d+)\s+-\s+(.*)$', file.stem)
+            if match:
+                target = file.with_name(f'{match.group(2)} - {int(match.group(1)):03d}{file.suffix}')
+                if target != file:
+                    file.rename(target)
+                    file = target
+        renamed.append(file)
+    if is_playlist:
+        renamed.sort(key=lambda file: int(re.search(r' - (\d{3,})$', file.stem).group(1)) if re.search(r' - (\d{3,})$', file.stem) else 0)
+    return renamed
+
+def write_download_zip(output, files, playlist_title, is_playlist):
+    folder = safe_name(playlist_title)
+    with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_STORED) as archive:
+        for file in files:
+            arcname = f'{folder}/{file.name}' if is_playlist else file.name
+            archive.write(file, arcname)
+
 def run_job(key, data):
     job = JOBS[key]
     directory = DOWNLOADS / key
     directory.mkdir()
     job.update(status='processing', progress=0)
     try:
-        command = [sys.executable, '-m', 'yt_dlp', '--ignore-config', '--js-runtimes', 'node', '--no-simulate', '--no-overwrites', '--newline', '--progress-template', 'download:PROGRESS:%(progress._percent_str)s', '--max-filesize', '2G', '--socket-timeout', '30', '--retries', '2', '--no-write-thumbnail', '-P', str(directory), '-o', '%(playlist_index|)s%(id)s - %(title).150B.%(ext)s']
+        is_playlist = bool(data.get('playlist'))
+        output_template = '%(playlist_index)03d - %(title).150B.%(ext)s' if is_playlist else '%(title).150B.%(ext)s'
+        command = [sys.executable, '-m', 'yt_dlp', '--ignore-config', '--js-runtimes', 'node', '--no-simulate', '--no-overwrites', '--newline', '--progress-template', 'download:PROGRESS:%(progress._percent_str)s', '--max-filesize', '2G', '--socket-timeout', '30', '--retries', '2', '--no-write-thumbnail', '-P', str(directory), '-o', output_template]
         if data['format'] == 'mp3':
             command += ['-x', '--audio-format', 'mp3', '--audio-quality', data['quality'] + 'K']
         else:
@@ -43,10 +72,10 @@ def run_job(key, data):
         files = [p for p in directory.iterdir() if p.suffix in ('.mp3', '.mp4')]
         if result or not files:
             raise RuntimeError('Não foi possível concluir a conversão. O vídeo pode estar indisponível ou o YouTube pode exigir autenticação.' if errors else 'Verifique se yt-dlp e FFmpeg estão instalados no servidor.')
+        files = normalize_download_names(files, is_playlist)
         if len(files) > 1:
             output = directory / 'Prometeus.zip'
-            with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_STORED) as archive:
-                for file in files: archive.write(file, file.name)
+            write_download_zip(output, files, data.get('title'), is_playlist)
         else:
             output = files[0]
         job.update(status='completed', progress=100, filename=output.name, file=str(output), count=len(files))

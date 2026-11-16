@@ -42,7 +42,7 @@ $('#select-all').onclick = () => {const available = info.items.filter(item=>item
 $('#convert').onclick = async () => {
   if (!info || !selected.size || submitting) return;
   submitting = true; updateSelection();
-  try {await runtimeReady; const data={url:analyzedUrl,title:info.title,format,quality:$('#quality').value,items:[...selected].sort((a,b)=>a-b)}; if(cloudMode) await queueCloud(data,info.items.filter(item=>selected.has(item.index))); else await api('/api/jobs',data); view('downloads');}
+  try {await runtimeReady; const data={url:analyzedUrl,title:info.title,playlist:info.playlist,format,quality:$('#quality').value,items:[...selected].sort((a,b)=>a-b)}; if(cloudMode) await queueCloud(data,info.items.filter(item=>selected.has(item.index))); else await api('/api/jobs',data); view('downloads');}
   catch(error){message(error.message);} finally {submitting=false;updateSelection();}
 };
 async function loadJobs(){
