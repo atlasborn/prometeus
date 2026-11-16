@@ -7,7 +7,7 @@ Web app de conversão de vídeos e playlists públicas do YouTube, com tema game
 - Seleção individual ou de todos os itens de uma playlist.
 - Fila com dois processos simultâneos e progresso do arquivo atual.
 - Downloads individuais sem o identificador do YouTube no nome do arquivo.
-- ZIP de playlists com os itens organizados em uma pasta, na ordem original e com o número da posição ao fim do nome.
+- ZIP de playlists com os itens organizados em uma pasta, na ordem original e com o número da posição no início do nome.
 
 ## Executar com Docker
 

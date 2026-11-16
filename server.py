@@ -23,19 +23,9 @@ def safe_name(value, fallback='Playlist'):
     return (name[:100].rstrip(' .') or fallback)
 
 def normalize_download_names(files, is_playlist):
-    renamed = []
-    for file in files:
-        if is_playlist:
-            match = re.match(r'^(\d+)\s+-\s+(.*)$', file.stem)
-            if match:
-                target = file.with_name(f'{match.group(2)} - {int(match.group(1)):03d}{file.suffix}')
-                if target != file:
-                    file.rename(target)
-                    file = target
-        renamed.append(file)
     if is_playlist:
-        renamed.sort(key=lambda file: int(re.search(r' - (\d{3,})$', file.stem).group(1)) if re.search(r' - (\d{3,})$', file.stem) else 0)
-    return renamed
+        files.sort(key=lambda file: int(re.match(r'^(\d+)\s+-\s+', file.stem).group(1)) if re.match(r'^(\d+)\s+-\s+', file.stem) else 0)
+    return files
 
 def write_download_zip(output, files, playlist_title, is_playlist):
     folder = safe_name(playlist_title)
