@@ -7,7 +7,7 @@ Web app de conversão de vídeos e playlists públicas do YouTube, com tema game
 - Seleção individual ou de todos os itens de uma playlist.
 - Fila com dois processos simultâneos e progresso do arquivo atual.
 - Downloads individuais sem o identificador do YouTube no nome do arquivo.
-- ZIP de playlists com os itens organizados em uma pasta, na ordem original e com o número da posição no início do nome.
+- ZIP de playlists com os itens organizados em uma pasta, na ordem original e numerados conforme a seleção baixada (`1_Título.mp3`). O arquivo ZIP recebe o nome `Nome da Playlist_by_prometeus.zip`.
 
 ## Executar com Docker
 

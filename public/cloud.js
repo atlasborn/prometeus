@@ -43,10 +43,10 @@ async function cloudFile(url, format, quality, progress) {
 }
 
 const crcTable = Array.from({length:256},(_,index)=>{for(let bit=0;bit<8;bit++)index=(index&1)?0xedb88320^(index>>>1):index>>>1;return index>>>0;});
-async function zipFiles(files) {
+async function zipFiles(files, folder) {
   const chunks=[], central=[]; let offset=0, centralSize=0;
   for(const file of files){
-    const name=new TextEncoder().encode(file.name), bytes=new Uint8Array(await file.blob.arrayBuffer());
+    const name=new TextEncoder().encode(folder ? `${folder}/${file.name}` : file.name), bytes=new Uint8Array(await file.blob.arrayBuffer());
     let crc=0xffffffff;for(const byte of bytes)crc=crcTable[(crc^byte)&255]^(crc>>>8);crc=(crc^0xffffffff)>>>0;
     const header=new Uint8Array(30+name.length), view=new DataView(header.buffer);
     view.setUint32(0,0x04034b50,true);view.setUint16(4,20,true);view.setUint16(6,0x800,true);view.setUint32(14,crc,true);view.setUint32(18,bytes.length,true);view.setUint32(22,bytes.length,true);view.setUint16(26,name.length,true);header.set(name,30);
@@ -59,6 +59,10 @@ async function zipFiles(files) {
   return new Blob([...chunks,...central,end],{type:'application/zip'});
 }
 
+function safeZipName(value) {
+  return String(value || 'Playlist').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\s+/g, ' ').trim().replace(/[ .]+$/g, '').slice(0, 100) || 'Playlist';
+}
+
 async function queueCloud(data, items) {
   const job={id:crypto.randomUUID(),title:data.title,format:data.format,status:'queued',progress:0,count:items.length};
   cloudJobs.push(job);
@@ -69,10 +73,11 @@ async function queueCloud(data, items) {
       for(let index=0;index<items.length;index++){
         job.current=index+1;
         const file=await cloudFile('https://www.youtube.com/watch?v='+encodeURIComponent(items[index].id),data.format,data.quality,value=>job.progress=value);
+        if(data.playlist) file.name=`${index+1}_${file.name}`;
         files.push(file);total+=file.blob.size;
         if(total>768*1024*1024)throw new Error('A seleção excede 768 MB no navegador. Divida a playlist em seleções menores.');
       }
-      const output=files.length>1?{name:'Prometeus.zip',blob:await zipFiles(files)}:files[0];
+      const output=files.length>1?{name:`${safeZipName(data.title)}_by_prometeus.zip`,blob:await zipFiles(files,safeZipName(data.title))}:files[0];
       job.downloadUrl=URL.createObjectURL(output.blob);job.filename=output.name;job.status='completed';job.progress=100;
     }catch(error){job.status='error';job.error=error.message;}
     loadJobs();

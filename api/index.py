@@ -99,7 +99,7 @@ async def conversion_stream(data):
                 shutil.copyfile(FFMPEG, binary)
             else:
                 binary.symlink_to(FFMPEG)
-            args = command() + ['--no-playlist', '--newline', '--progress-template', 'download:PROGRESS:%(progress._percent_str)s', '--max-filesize', '200M', '--ffmpeg-location', str(binary), '-P', str(directory), '-o', '%(title).120B [%(id)s].%(ext)s']
+            args = command() + ['--no-playlist', '--newline', '--progress-template', 'download:PROGRESS:%(progress._percent_str)s', '--max-filesize', '200M', '--ffmpeg-location', str(binary), '-P', str(directory), '-o', '%(title).120B.%(ext)s']
             if data.format == 'mp3':
                 args += ['-x', '--audio-format', 'mp3', '--audio-quality', data.quality + 'K']
             else:

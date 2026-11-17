@@ -24,7 +24,7 @@ def safe_name(value, fallback='Playlist'):
 
 def normalize_download_names(files, is_playlist):
     if is_playlist:
-        files.sort(key=lambda file: int(re.match(r'^(\d+)\s+-\s+', file.stem).group(1)) if re.match(r'^(\d+)\s+-\s+', file.stem) else 0)
+        files.sort(key=lambda file: int(re.match(r'^(\d+)_', file.stem).group(1)) if re.match(r'^(\d+)_', file.stem) else 0)
     return files
 
 def write_download_zip(output, files, playlist_title, is_playlist):
@@ -41,7 +41,7 @@ def run_job(key, data):
     job.update(status='processing', progress=0)
     try:
         is_playlist = bool(data.get('playlist'))
-        output_template = '%(playlist_index)03d - %(title).150B.%(ext)s' if is_playlist else '%(title).150B.%(ext)s'
+        output_template = '%(playlist_autonumber)d_%(title).150B.%(ext)s' if is_playlist else '%(title).150B.%(ext)s'
         command = [sys.executable, '-m', 'yt_dlp', '--ignore-config', '--js-runtimes', 'node', '--no-simulate', '--no-overwrites', '--newline', '--progress-template', 'download:PROGRESS:%(progress._percent_str)s', '--max-filesize', '2G', '--socket-timeout', '30', '--retries', '2', '--no-write-thumbnail', '-P', str(directory), '-o', output_template]
         if data['format'] == 'mp3':
             command += ['-x', '--audio-format', 'mp3', '--audio-quality', data['quality'] + 'K']
@@ -64,7 +64,7 @@ def run_job(key, data):
             raise RuntimeError('Não foi possível concluir a conversão. O vídeo pode estar indisponível ou o YouTube pode exigir autenticação.' if errors else 'Verifique se yt-dlp e FFmpeg estão instalados no servidor.')
         files = normalize_download_names(files, is_playlist)
         if len(files) > 1:
-            output = directory / 'Prometeus.zip'
+            output = directory / f'{safe_name(data.get("title"))}_by_prometeus.zip'
             write_download_zip(output, files, data.get('title'), is_playlist)
         else:
             output = files[0]
