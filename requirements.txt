@@ -1,2 +1,4 @@
-streamlit
-pytube
+yt-dlp[default]
+fastapi>=0.115,<1
+imageio-ffmpeg>=0.6,<1
+nodejs-wheel>=22,<25
